@@ -1,0 +1,1 @@
+r1_light_board_slave\startup_stm32g474xx.o: startup_stm32g474xx.s
