@@ -74,6 +74,7 @@ uint8_t CHALLENGE_End_TxFlag = 0;
 uint8_t OFFEND_TO_DEFEND_TxFlag = 0;
 uint8_t DEFEND_TO_OFFEND_TxFlag = 0;
 uint8_t SOMETHING_IS_GOING = 0;
+uint8_t HeartBeat_Tx_Index = 0;
 uint64_t USER_Systick = 0;
 uint64_t SELF_TEST_Begin_Time = 0;
 uint64_t CHALLENGE_Begin_Time = 0;
@@ -126,38 +127,21 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM7_Init();
   MX_TIM6_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
   FDCAN1_Init(&hfdcan1);
   FDCAN2_Init(&hfdcan2);
   FDCAN3_Init(&hfdcan3);
   HAL_TIM_Base_Start_IT(&htim6);
   HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start_IT(&htim5);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    if (VISION_Enable)
-    {
-      FDCAN_SendData(&hfdcan1, VISION_TxData, 0x101, 8);
-      HAL_Delay(1);
-    }
-    if (DRIBBLE_Enable)
-    {
-      FDCAN_SendData(&hfdcan2, DRIBBLE_TxData, 0x102, 8);
-      HAL_Delay(1);
-    }
-    if (PUSHSHOT_Enable)
-    {
-      FDCAN_SendData(&hfdcan3, PUSHSHOT_TxData, 0x103, 8);
-      HAL_Delay(1);
-    }
-    if (CHASSIS_Enable)
-    {
-      FDCAN_SendData(&hfdcan3, CHASSIS_TxData, 0x104, 8);
-      HAL_Delay(1);
-    }
     if (SELF_TEST_Begin)
     {
       SELF_TEST_Begin_Time = USER_Systick;
@@ -218,7 +202,7 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 0)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 1000)
+      if (USER_Systick - LAST_Status_Change_Time < 1200)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_CYAN : COLOR_ORANGE;
@@ -229,7 +213,7 @@ int main(void)
           OFFEND_TO_DEFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 1000 && USER_Systick - LAST_Status_Change_Time > 900)
+        if (USER_Systick - LAST_Status_Change_Time < 1200 && USER_Systick - LAST_Status_Change_Time > 1100)
         {
           SOMETHING_IS_GOING = 0;
         }
@@ -237,18 +221,18 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 1)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 1000)
+      if (USER_Systick - LAST_Status_Change_Time < 1200)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_INDIGO : COLOR_MAGENTA;
         WS2812_Set_Single_Color(0, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
         if (DEFEND_TO_OFFEND_TxFlag)
         {
-          FDCAN_SendData(&hfdcan3, DEFEND_TO_OFFEND_TxData, 0x110, 8);
+          FDCAN_SendData(&hfdcan3, DEFEND_TO_OFFEND_TxData, 0x10A, 8);
           DEFEND_TO_OFFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 1000 && USER_Systick - LAST_Status_Change_Time > 900)
+        if (USER_Systick - LAST_Status_Change_Time < 1200 && USER_Systick - LAST_Status_Change_Time > 1100)
         {
           SOMETHING_IS_GOING = 0;
         }
@@ -317,6 +301,53 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   {
     USER_Systick++;
   }
+  else if (htim->Instance == TIM5)
+  {
+    HeartBeat_Tx_Index++;
+    switch (HeartBeat_Tx_Index)
+    {
+    case 1:
+    {
+      if (VISION_Enable)
+      {
+        FDCAN_SendData(&hfdcan1, VISION_TxData, 0x101, 8);
+      }
+      break;
+    }
+    case 2:
+    {
+      if (DRIBBLE_Enable)
+      {
+        FDCAN_SendData(&hfdcan1, DRIBBLE_TxData, 0x102, 8);
+      }
+      break;
+    }
+    case 3:
+    {
+      if (PUSHSHOT_Enable)
+      {
+        FDCAN_SendData(&hfdcan2, PUSHSHOT_TxData, 0x103, 8);
+      }
+      break;
+    }
+    case 4:
+    {
+      if (CHASSIS_Enable)
+      {
+        FDCAN_SendData(&hfdcan2, CHASSIS_TxData, 0x104, 8);
+      }
+      break;
+    }
+    default:
+    {
+      break;
+    }
+    }
+    if (HeartBeat_Tx_Index == 4)
+    {
+      HeartBeat_Tx_Index = 0;
+    }
+  }
 }
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
@@ -329,6 +360,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
       {
         OFFEND_OR_DEFEND_Status = 1;
         SOMETHING_IS_GOING = 1;
+        DEFEND_TO_OFFEND_TxFlag = 1;
         LAST_Status_Change_Time = USER_Systick;
       }
     }
@@ -346,6 +378,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
       {
         OFFEND_OR_DEFEND_Status = 0;
         SOMETHING_IS_GOING = 1;
+        OFFEND_TO_DEFEND_TxFlag = 1;
         LAST_Status_Change_Time = USER_Systick;
       }
     }
