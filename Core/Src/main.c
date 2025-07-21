@@ -159,7 +159,7 @@ int main(void)
     {
       uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
       uint8_t color = Spark_Number ? COLOR_GOLD : COLOR_PINK;
-      WS2812_Set_Single_Color(0, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
     }
     else if (USER_Systick - SELF_TEST_Begin_Time > 8000)
     {
@@ -188,7 +188,7 @@ int main(void)
     {
       uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
       uint8_t color = Spark_Number ? COLOR_BLUE : COLOR_GREEN;
-      WS2812_Set_Single_Color(0, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
     }
     else if (USER_Systick - CHALLENGE_Begin_Time > 25000)
     {
@@ -202,18 +202,18 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 0)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 1200)
+      if (USER_Systick - LAST_Status_Change_Time < 2000)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_CYAN : COLOR_ORANGE;
-        WS2812_Set_Single_Color(0, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
         if (OFFEND_TO_DEFEND_TxFlag)
         {
           FDCAN_SendData(&hfdcan3, OFFEND_TO_DEFEND_TxData, 0x109, 8);
           OFFEND_TO_DEFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 1200 && USER_Systick - LAST_Status_Change_Time > 1100)
+        if (USER_Systick - LAST_Status_Change_Time < 2000 && USER_Systick - LAST_Status_Change_Time > 1900)
         {
           SOMETHING_IS_GOING = 0;
         }
@@ -221,18 +221,18 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 1)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 1200)
+      if (USER_Systick - LAST_Status_Change_Time < 2000)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_INDIGO : COLOR_MAGENTA;
-        WS2812_Set_Single_Color(0, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
         if (DEFEND_TO_OFFEND_TxFlag)
         {
           FDCAN_SendData(&hfdcan3, DEFEND_TO_OFFEND_TxData, 0x10A, 8);
           DEFEND_TO_OFFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 1200 && USER_Systick - LAST_Status_Change_Time > 1100)
+        if (USER_Systick - LAST_Status_Change_Time < 2000 && USER_Systick - LAST_Status_Change_Time > 1900)
         {
           SOMETHING_IS_GOING = 0;
         }

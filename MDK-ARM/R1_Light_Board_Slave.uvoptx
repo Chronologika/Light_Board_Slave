@@ -168,12 +168,12 @@
         <Ww>
           <count>2</count>
           <WinNumber>1</WinNumber>
-          <ItemText>CAN1_RxMessage</ItemText>
+          <ItemText>CAN3_RxMessage</ItemText>
         </Ww>
         <Ww>
           <count>3</count>
           <WinNumber>1</WinNumber>
-          <ItemText>LAST_Status_Change_Time</ItemText>
+          <ItemText>LAST_Status_Change_Time,0x0A</ItemText>
         </Ww>
         <Ww>
           <count>4</count>
@@ -189,6 +189,31 @@
           <count>6</count>
           <WinNumber>1</WinNumber>
           <ItemText>OFFEND_OR_DEFEND_Status</ItemText>
+        </Ww>
+        <Ww>
+          <count>7</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>VISION_Enable</ItemText>
+        </Ww>
+        <Ww>
+          <count>8</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>DRIBBLE_Enable</ItemText>
+        </Ww>
+        <Ww>
+          <count>9</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>PUSHSHOT_Enable</ItemText>
+        </Ww>
+        <Ww>
+          <count>10</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>CHASSIS_Enable</ItemText>
+        </Ww>
+        <Ww>
+          <count>11</count>
+          <WinNumber>1</WinNumber>
+          <ItemText>USER_Systick,0x0A</ItemText>
         </Ww>
       </WatchWindow1>
       <Tracepoint>
