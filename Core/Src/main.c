@@ -202,7 +202,7 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 0)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 2000)
+      if (USER_Systick - LAST_Status_Change_Time < 2100)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_CYAN : COLOR_ORANGE;
@@ -213,7 +213,7 @@ int main(void)
           OFFEND_TO_DEFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 2000 && USER_Systick - LAST_Status_Change_Time > 1900)
+        if (USER_Systick - LAST_Status_Change_Time > 2000)
         {
           SOMETHING_IS_GOING = 0;
         }
@@ -221,7 +221,7 @@ int main(void)
     }
     if (OFFEND_OR_DEFEND_Status == 1)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 2000)
+      if (USER_Systick - LAST_Status_Change_Time < 2100)
       {
         uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
         uint8_t color = Spark_Number ? COLOR_INDIGO : COLOR_MAGENTA;
@@ -232,7 +232,7 @@ int main(void)
           DEFEND_TO_OFFEND_TxFlag--;
           HAL_Delay(1);
         }
-        if (USER_Systick - LAST_Status_Change_Time < 2000 && USER_Systick - LAST_Status_Change_Time > 1900)
+        if (USER_Systick - LAST_Status_Change_Time > 2000)
         {
           SOMETHING_IS_GOING = 0;
         }
