@@ -54,7 +54,7 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+void Peripherals_Init(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -79,22 +79,23 @@ uint64_t USER_Systick = 0;
 uint64_t SELF_TEST_Begin_Time = 0;
 uint64_t CHALLENGE_Begin_Time = 0;
 uint64_t LAST_Status_Change_Time = 0;
-uint8_t VISION_TxData[8] = {1, 1, 1, 1, 1, 1, 1, 1};
-uint8_t DRIBBLE_TxData[8] = {2, 2, 2, 2, 2, 2, 2, 2};
-uint8_t PUSHSHOT_TxData[8] = {3, 3, 3, 3, 3, 3, 3, 3};
-uint8_t CHASSIS_TxData[8] = {4, 4, 4, 4, 4, 4, 4, 4};
-uint8_t SELF_TEST_Begin_TxData[8] = {5, 5, 5, 5, 5, 5, 5, 5};
-uint8_t SELF_TEST_End_TxData[8] = {6, 6, 6, 6, 6, 6, 6, 6};
-uint8_t CHALLENGE_Begin_TxData[8] = {7, 7, 7, 7, 7, 7, 7, 7};
-uint8_t CHALLENGE_End_TxData[8] = {8, 8, 8, 8, 8, 8, 8, 8};
-uint8_t OFFEND_TO_DEFEND_TxData[8] = {9, 9, 9, 9, 9, 9, 9, 9};
-uint8_t DEFEND_TO_OFFEND_TxData[8] = {10, 10, 10, 10, 10, 10, 10, 10};
+uint8_t VISION_TxData[1] = {1};
+uint8_t DRIBBLE_TxData[1] = {2};
+uint8_t PUSHSHOT_TxData[1] = {3};
+uint8_t CHASSIS_TxData[1] = {4};
+uint8_t SELF_TEST_Begin_TxData[1] = {5};
+uint8_t SELF_TEST_End_TxData[1] = {6};
+uint8_t CHALLENGE_Begin_TxData[1] = {7};
+uint8_t CHALLENGE_End_TxData[1] = {8};
+uint8_t OFFEND_TO_DEFEND_TxData[1] = {9};
+uint8_t DEFEND_TO_OFFEND_TxData[1] = {10};
+volatile uint8_t SYSTEM_INTERRUPT_FLAG = 0;
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -129,113 +130,120 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
-  FDCAN1_Init(&hfdcan1);
-  FDCAN2_Init(&hfdcan2);
-  FDCAN3_Init(&hfdcan3);
-  HAL_TIM_Base_Start_IT(&htim6);
-  HAL_TIM_Base_Start_IT(&htim7);
-  HAL_TIM_Base_Start_IT(&htim5);
-
+  Peripherals_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    /* ------------------------ interrupt ------------------------ */
+    if (SYSTEM_INTERRUPT_FLAG)
+      continue;
+
+    /* ------------------------ self_test ------------------------ */
     if (SELF_TEST_Begin)
     {
       SELF_TEST_Begin_Time = USER_Systick;
       SELF_TEST_Begin--;
       SELF_TEST_Begin_TxFlag = 1;
       SELF_TEST_End_TxFlag = 1;
-      if (SELF_TEST_Begin_TxFlag)
+    }
+
+    if (SELF_TEST_Begin_TxFlag)
+    {
+      FDCAN_SendData(&hfdcan3, SELF_TEST_Begin_TxData, 0x105, 1);
+      SELF_TEST_Begin_TxFlag = 0;
+      HAL_Delay(1);
+    }
+
+    if (SELF_TEST_End_TxFlag)
+    {
+      if (USER_Systick - SELF_TEST_Begin_Time <= 8000)
       {
-        FDCAN_SendData(&hfdcan3, SELF_TEST_Begin_TxData, 0x105, 8);
-        SELF_TEST_Begin_TxFlag--;
-        HAL_Delay(1);
+        uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256);
+        uint8_t color = Spark_Number ? COLOR_GOLD : COLOR_PINK;
+        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
       }
-    }
-    if (USER_Systick - SELF_TEST_Begin_Time <= 8000 && SELF_TEST_End_TxFlag == 1)
-    {
-      uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
-      uint8_t color = Spark_Number ? COLOR_GOLD : COLOR_PINK;
-      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
-    }
-    else if (USER_Systick - SELF_TEST_Begin_Time > 8000)
-    {
-      if (SELF_TEST_End_TxFlag)
+      else
       {
-        FDCAN_SendData(&hfdcan3, SELF_TEST_End_TxData, 0x106, 8);
+        FDCAN_SendData(&hfdcan3, SELF_TEST_End_TxData, 0x106, 1);
+        SELF_TEST_End_TxFlag = 0;
         SOMETHING_IS_GOING = 0;
-        SELF_TEST_End_TxFlag--;
         HAL_Delay(1);
       }
     }
+
+    /* ------------------------ challenge ------------------------ */
     if (CHALLENGE_Begin)
     {
       CHALLENGE_Begin_Time = USER_Systick;
       CHALLENGE_Begin--;
       CHALLENGE_Begin_TxFlag = 1;
       CHALLENGE_End_TxFlag = 1;
-      if (CHALLENGE_Begin_TxFlag)
+    }
+
+    if (CHALLENGE_Begin_TxFlag)
+    {
+      FDCAN_SendData(&hfdcan3, CHALLENGE_Begin_TxData, 0x107, 1);
+      CHALLENGE_Begin_TxFlag = 0;
+      HAL_Delay(1);
+    }
+
+    if (CHALLENGE_End_TxFlag)
+    {
+      if (USER_Systick - CHALLENGE_Begin_Time <= 25000)
       {
-        FDCAN_SendData(&hfdcan3, CHALLENGE_Begin_TxData, 0x107, 8);
-        CHALLENGE_Begin_TxFlag--;
-        HAL_Delay(1);
+        uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256);
+        uint8_t color = Spark_Number ? COLOR_BLUE : COLOR_GREEN;
+        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
       }
-    }
-    if (USER_Systick - CHALLENGE_Begin_Time <= 25000 && CHALLENGE_End_TxFlag == 1)
-    {
-      uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
-      uint8_t color = Spark_Number ? COLOR_BLUE : COLOR_GREEN;
-      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
-    }
-    else if (USER_Systick - CHALLENGE_Begin_Time > 25000)
-    {
-      if (CHALLENGE_End_TxFlag)
+      else
       {
-        FDCAN_SendData(&hfdcan3, CHALLENGE_End_TxData, 0x108, 8);
-        CHALLENGE_End_TxFlag--;
+        FDCAN_SendData(&hfdcan3, CHALLENGE_End_TxData, 0x108, 1);
+        CHALLENGE_End_TxFlag = 0;
         SOMETHING_IS_GOING = 0;
         HAL_Delay(1);
       }
     }
-    if (OFFEND_OR_DEFEND_Status == 0)
+
+    /* ------------------------ offend_to_defend ------------------------ */
+    if (OFFEND_OR_DEFEND_Status == 0 && USER_Systick - LAST_Status_Change_Time < 2100)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 2100)
+      uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256);
+      uint8_t color = Spark_Number ? COLOR_CYAN : COLOR_ORANGE;
+      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+
+      if (OFFEND_TO_DEFEND_TxFlag)
       {
-        uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
-        uint8_t color = Spark_Number ? COLOR_CYAN : COLOR_ORANGE;
-        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
-        if (OFFEND_TO_DEFEND_TxFlag)
-        {
-          FDCAN_SendData(&hfdcan3, OFFEND_TO_DEFEND_TxData, 0x109, 8);
-          OFFEND_TO_DEFEND_TxFlag--;
-          HAL_Delay(1);
-        }
-        if (USER_Systick - LAST_Status_Change_Time > 2000)
-        {
-          SOMETHING_IS_GOING = 0;
-        }
+        FDCAN_SendData(&hfdcan3, OFFEND_TO_DEFEND_TxData, 0x109, 1);
+        OFFEND_TO_DEFEND_TxFlag = 0;
+        HAL_Delay(1);
+      }
+
+      if (USER_Systick - LAST_Status_Change_Time > 2000)
+      {
+        SOMETHING_IS_GOING = 0;
       }
     }
-    if (OFFEND_OR_DEFEND_Status == 1)
+
+    /* ------------------------ defend_to_offend ------------------------ */
+    if (OFFEND_OR_DEFEND_Status == 1 && USER_Systick - LAST_Status_Change_Time < 2100)
     {
-      if (USER_Systick - LAST_Status_Change_Time < 2100)
+      uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256);
+      uint8_t color = Spark_Number ? COLOR_INDIGO : COLOR_MAGENTA;
+      WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
+
+      if (DEFEND_TO_OFFEND_TxFlag)
       {
-        uint8_t Spark_Number = ((USER_Systick & 0x1FF) > 256) ? 1 : 0;
-        uint8_t color = Spark_Number ? COLOR_INDIGO : COLOR_MAGENTA;
-        WS2812_Set_Single_Color(1, Color_Table[color].R, Color_Table[color].G, Color_Table[color].B, 0.1);
-        if (DEFEND_TO_OFFEND_TxFlag)
-        {
-          FDCAN_SendData(&hfdcan3, DEFEND_TO_OFFEND_TxData, 0x10A, 8);
-          DEFEND_TO_OFFEND_TxFlag--;
-          HAL_Delay(1);
-        }
-        if (USER_Systick - LAST_Status_Change_Time > 2000)
-        {
-          SOMETHING_IS_GOING = 0;
-        }
+        FDCAN_SendData(&hfdcan3, DEFEND_TO_OFFEND_TxData, 0x10A, 1);
+        DEFEND_TO_OFFEND_TxFlag = 0;
+        HAL_Delay(1);
+      }
+
+      if (USER_Systick - LAST_Status_Change_Time > 2000)
+      {
+        SOMETHING_IS_GOING = 0;
       }
     }
     /* USER CODE END WHILE */
@@ -246,21 +254,21 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -276,9 +284,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -310,7 +317,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       if (VISION_Enable)
       {
-        FDCAN_SendData(&hfdcan1, VISION_TxData, 0x101, 8);
+        FDCAN_SendData(&hfdcan1, VISION_TxData, 0x101, 1);
       }
       break;
     }
@@ -318,7 +325,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       if (DRIBBLE_Enable)
       {
-        FDCAN_SendData(&hfdcan1, DRIBBLE_TxData, 0x102, 8);
+        FDCAN_SendData(&hfdcan1, DRIBBLE_TxData, 0x102, 1);
       }
       break;
     }
@@ -326,7 +333,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       if (PUSHSHOT_Enable)
       {
-        FDCAN_SendData(&hfdcan2, PUSHSHOT_TxData, 0x103, 8);
+        FDCAN_SendData(&hfdcan2, PUSHSHOT_TxData, 0x103, 1);
       }
       break;
     }
@@ -334,7 +341,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     {
       if (CHASSIS_Enable)
       {
-        FDCAN_SendData(&hfdcan2, CHASSIS_TxData, 0x104, 8);
+        FDCAN_SendData(&hfdcan2, CHASSIS_TxData, 0x104, 1);
       }
       break;
     }
@@ -364,9 +371,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
         LAST_Status_Change_Time = USER_Systick;
       }
     }
-    else if (CAN1_RxMessage.Identifier == 0x60)
+    else if (CAN1_RxMessage.Identifier == 0x90)
     {
-      SOMETHING_IS_GOING = 0;
+      SYSTEM_INTERRUPT_FLAG = 1;
+      Reset_All_Task_Flags();
     }
   }
   else if (hfdcan == &hfdcan3)
@@ -382,9 +390,9 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
         LAST_Status_Change_Time = USER_Systick;
       }
     }
-    else if (CAN3_RxMessage.Identifier == 0x60)
+    else if (CAN3_RxMessage.Identifier == 0x100)
     {
-      SOMETHING_IS_GOING = 0;
+      SYSTEM_INTERRUPT_FLAG = 1;
     }
   }
 }
@@ -411,12 +419,33 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
     }
   }
 }
+void Peripherals_Init(void)
+{
+  FDCAN1_Init(&hfdcan1);
+  FDCAN2_Init(&hfdcan2);
+  FDCAN3_Init(&hfdcan3);
+  HAL_TIM_Base_Start_IT(&htim6);
+  HAL_TIM_Base_Start_IT(&htim7);
+  HAL_TIM_Base_Start_IT(&htim5);
+}
+void Reset_All_Task_Flags(void)
+{
+  SELF_TEST_Begin = 0;
+  SELF_TEST_Begin_TxFlag = 0;
+  SELF_TEST_End_TxFlag = 0;
+  CHALLENGE_Begin = 0;
+  CHALLENGE_Begin_TxFlag = 0;
+  CHALLENGE_End_TxFlag = 0;
+  OFFEND_TO_DEFEND_TxFlag = 0;
+  DEFEND_TO_OFFEND_TxFlag = 0;
+  SOMETHING_IS_GOING = 0;
+}
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
@@ -429,12 +458,12 @@ void Error_Handler(void)
 }
 #ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
