@@ -55,6 +55,7 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 void Peripherals_Init(void);
+void Reset_All_Task_Flags(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -392,7 +393,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
     }
     else if (CAN3_RxMessage.Identifier == 0x100)
     {
-      SYSTEM_INTERRUPT_FLAG = 1;
+      SYSTEM_INTERRUPT_FLAG = 0;
     }
   }
 }
