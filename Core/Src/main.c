@@ -377,6 +377,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
       SYSTEM_INTERRUPT_FLAG = 1;
       Reset_All_Task_Flags();
     }
+		else if (CAN1_RxMessage.Identifier == 0x100)
+    {
+      SYSTEM_INTERRUPT_FLAG = 0;
+    }
   }
   else if (hfdcan == &hfdcan3)
   {
@@ -417,6 +421,10 @@ void HAL_FDCAN_RxFifo1Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo1ITs)
         CHALLENGE_Begin = 1;
         SOMETHING_IS_GOING = 1;
       }
+    }
+		else if (CAN2_RxMessage.Identifier == 0x100)
+    {
+      SYSTEM_INTERRUPT_FLAG = 0;
     }
   }
 }
